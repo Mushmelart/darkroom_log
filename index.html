@@ -1,0 +1,1350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>MI Dark Room Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #12141a; --surface: #1a1d24; --border: #2a2d35;
+    --text: #e8e8ec; --text-dim: #8a8a9a;
+    --teal: #2dd4bf; --teal-glow: rgba(45,212,191,0.12);
+    --orange: #ff9f0a; --orange-glow: rgba(255,159,10,0.12);
+    --red: #ff453a; --red-glow: rgba(255,69,58,0.12);
+    --green: #34c759; --purple: #a78bfa; --purple-glow: rgba(167,139,250,0.12);
+    --blue: #5b9cf6; --blue-glow: rgba(91,156,246,0.12);
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); padding: 16px 16px 100px; -webkit-tap-highlight-color: transparent; }
+
+  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .header-title { font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 700; color: var(--teal); letter-spacing: 1px; }
+  .header-badge { font-size: 11px; color: var(--text-dim); background: var(--surface); padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border); }
+  .clock { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--text-dim); }
+
+  /* MODE TOGGLE */
+  .mode-toggle { display: flex; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 14px; overflow: hidden; }
+  .mode-btn { flex: 1; padding: 14px; text-align: center; font-size: 15px; font-weight: 700; cursor: pointer; user-select: none; transition: all 0.15s; color: var(--text-dim); border: none; background: none; font-family: 'DM Sans', sans-serif; }
+  .mode-btn.active { background: var(--teal-glow); color: var(--teal); border-bottom: 3px solid var(--teal); }
+  .mode-btn.active.shift { background: var(--purple-glow); color: var(--purple); border-bottom-color: var(--purple); }
+
+  .section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 14px; }
+  .section-label { font-size: 12px; font-weight: 600; color: var(--text-dim); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .field-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .field label { display: block; font-size: 11px; color: var(--text-dim); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .field input, .field select, .field textarea { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 16px; -webkit-appearance: none; }
+  .field select { font-size: 14px; font-family: 'DM Sans', sans-serif; }
+  .field textarea { font-size: 14px; font-family: 'DM Sans', sans-serif; min-height: 60px; resize: vertical; }
+  .field input::placeholder, .field textarea::placeholder { color: var(--text-dim); }
+  .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--teal); }
+
+  .chip-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { padding: 10px 16px; border-radius: 8px; background: var(--bg); border: 1px solid var(--border); font-size: 14px; font-weight: 500; cursor: pointer; user-select: none; transition: all 0.12s; }
+  .chip b { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; opacity: 0.4; }
+  .chip.selected { background: var(--teal-glow); border-color: var(--teal); color: var(--teal); }
+  .chip.selected b { opacity: 1; }
+  .chip.selected.orange { background: var(--orange-glow); border-color: var(--orange); color: var(--orange); }
+  .chip.selected.red { background: var(--red-glow); border-color: var(--red); color: var(--red); }
+  .chip.selected.purple { background: var(--purple-glow); border-color: var(--purple); color: var(--purple); }
+
+  /* DAILY CONDITIONS - persistent header */
+  .daily-conditions { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 14px; }
+  .daily-conditions .dc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .daily-conditions .dc-title { font-size: 12px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+  .daily-conditions .dc-set { font-size: 11px; color: var(--green); font-weight: 600; }
+  .dc-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* JOB TABS */
+  .job-tabs { display: flex; gap: 6px; align-items: center; margin-bottom: 14px; overflow-x: auto; padding-bottom: 4px; }
+  .job-tab { padding: 10px 16px; border-radius: 8px; background: var(--surface); border: 1px solid var(--border); font-size: 13px; font-weight: 600; cursor: pointer; user-select: none; transition: all 0.15s; white-space: nowrap; color: var(--text-dim); font-family: 'DM Sans', sans-serif; position: relative; }
+  .job-tab.active { background: var(--teal-glow); border-color: var(--teal); color: var(--teal); }
+  .job-tab .tab-timer { font-family: 'JetBrains Mono', monospace; font-size: 11px; display: block; margin-top: 2px; }
+  .job-tab .tab-running { color: var(--green); }
+  .job-tab .tab-paused { color: var(--orange); }
+  .job-tab .tab-idle { color: var(--text-dim); }
+  .job-tab .tab-close { position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; border-radius: 50%; background: var(--red); color: #fff; font-size: 11px; font-weight: 700; display: none; align-items: center; justify-content: center; cursor: pointer; line-height: 1; border: 2px solid var(--bg); }
+  .job-tab:hover .tab-close, .job-tab.active .tab-close { display: flex; }
+  .add-job-btn { padding: 10px 14px; border-radius: 8px; background: var(--bg); border: 2px dashed var(--border); font-size: 18px; cursor: pointer; color: var(--text-dim); transition: all 0.15s; font-family: 'DM Sans', sans-serif; }
+  .add-job-btn:hover { border-color: var(--teal); color: var(--teal); }
+
+  /* JOB PANEL */
+  .job-panel { display: none; }
+  .job-panel.active { display: block; }
+
+  /* TIMER CONTROLS */
+  .timer-block { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-radius: 8px; background: var(--bg); border: 1px solid var(--border); margin-bottom: 8px; }
+  .timer-left { display: flex; align-items: center; gap: 10px; }
+  .timer-label { font-size: 14px; font-weight: 600; }
+  .timer-display { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 700; color: var(--text-dim); min-width: 60px; text-align: right; }
+  .timer-btn { padding: 10px 20px; border-radius: 8px; border: none; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.12s; }
+  .timer-btn.start { background: var(--teal); color: #fff; }
+  .timer-btn.pause { background: var(--orange); color: #fff; }
+  .timer-btn.resume { background: var(--teal); color: #fff; }
+  .timer-btn:active { transform: scale(0.96); }
+  .timer-block.running { border-color: var(--teal); background: var(--teal-glow); }
+  .timer-block.running .timer-display { color: var(--teal); }
+  .timer-block.paused { border-color: var(--orange); }
+  .timer-block.paused .timer-display { color: var(--orange); }
+  .timer-block.done .timer-display { color: var(--text); }
+
+  /* MESH GRID */
+  .mesh-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+  .mesh-grid .field label { font-size: 11px; }
+
+  /* CUMULATIVE */
+  .cumulative { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 14px; }
+  .cumulative-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
+  .cumulative-label { font-size: 12px; color: var(--text-dim); }
+  .cumulative-time { font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 600; }
+  .cumulative-time.teal { color: var(--teal); }
+  .cumulative-time.orange { color: var(--orange); }
+  .cumulative-divider { border-top: 1px solid var(--border); margin: 6px 0; }
+  .cumulative-row.total .cumulative-label { font-size: 14px; font-weight: 700; color: var(--text); }
+  .cumulative-row.total .cumulative-time { font-size: 20px; color: var(--teal); }
+
+  .submit-bar { position: fixed; bottom: 0; left: 0; right: 0; padding: 12px 16px; background: var(--surface); border-top: 2px solid var(--border); z-index: 100; }
+  .submit-btn { width: 100%; padding: 18px; border: none; border-radius: var(--radius); background: var(--green); color: #fff; font-family: 'DM Sans', sans-serif; font-size: 18px; font-weight: 700; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; }
+  .submit-btn:active { transform: scale(0.98); }
+  .submit-btn:disabled { opacity: 0.5; }
+
+  .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--green); color: #fff; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; opacity: 0; transition: all 0.3s; z-index: 200; pointer-events: none; }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+  .toast.error { background: var(--red); }
+
+  .reshoot-section { display: none; margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .reshoot-section.visible { display: block; }
+
+  .delay-reason-field { display: none; margin-top: 8px; }
+  .delay-reason-field.visible { display: block; }
+  .delay-reason-field textarea { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--orange); background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px; min-height: 50px; resize: vertical; }
+  .delay-reason-field textarea:focus { outline: none; }
+  .delay-reason-field label { font-size: 11px; color: var(--orange); margin-bottom: 4px; display: block; }
+
+  .waiting-block { display: none; background: var(--orange-glow); border: 1px solid var(--orange); border-radius: 8px; padding: 14px 16px; margin-top: 10px; }
+  .waiting-block.active { display: block; }
+
+  /* MODE SECTIONS */
+  .job-only, .shift-only { display: none; }
+  body.mode-job .job-only { display: block; }
+  body.mode-shift .shift-only { display: block; }
+
+  /* Submitted job tab styling */
+  .job-tab.submitted { opacity: 0.4; pointer-events: none; border-color: var(--green); }
+  .job-tab.submitted .tab-timer { color: var(--green); }
+</style>
+</head>
+<body class="mode-job">
+
+<div class="header">
+  <div>
+    <div class="header-title">DARK ROOM LOG</div>
+    <div class="clock" id="clock"></div>
+  </div>
+  <div class="header-badge">Mirror Image</div>
+</div>
+
+<!-- MODE TOGGLE -->
+<div class="mode-toggle">
+  <button class="mode-btn active" id="modeJobBtn" onclick="setMode('job')">🎯 Job</button>
+  <button class="mode-btn" id="modeShiftBtn" onclick="setMode('shift')">🔄 Shift Task</button>
+</div>
+
+<!-- DAILY CONDITIONS (persistent) -->
+<div class="daily-conditions">
+  <div class="dc-header">
+    <span class="dc-title">Daily Conditions</span>
+    <span class="dc-set" id="dcStatus"></span>
+  </div>
+  <div class="dc-fields">
+    <div class="field">
+      <label>Humidity AM (%)</label>
+      <input type="number" id="globalHumidityAM" inputmode="numeric" placeholder="e.g. 45" onchange="updateDCStatus()">
+    </div>
+    <div class="field">
+      <label>Humidity PM (%)</label>
+      <input type="number" id="globalHumidityPM" inputmode="numeric" placeholder="e.g. 52" onchange="updateDCStatus()">
+    </div>
+  </div>
+</div>
+
+<!-- ============================================= -->
+<!-- JOB MODE -->
+<!-- ============================================= -->
+<div class="job-only">
+
+  <!-- JOB TABS -->
+  <div class="job-tabs" id="jobTabs">
+    <div class="job-tab active" data-job-id="1" onclick="switchJob(1)">
+      <span class="tab-label">Job 1</span>
+      <span class="tab-timer tab-idle" id="tabTimer-1">0:00</span>
+      <div class="tab-close" onclick="event.stopPropagation(); removeJob(1)">×</div>
+    </div>
+    <button class="add-job-btn" onclick="addJob()">+</button>
+  </div>
+
+  <!-- JOB PANELS (one per job) -->
+  <div id="jobPanelsContainer">
+    <div class="job-panel active" id="jobPanel-1" data-job-id="1">
+
+      <div class="section">
+        <div class="section-label">Job Info</div>
+        <div class="field-row">
+          <div class="field">
+            <label>Order #</label>
+            <input type="text" id="orderNum-1" inputmode="text" placeholder="Job number" onchange="updateTabLabel(1)">
+          </div>
+          <div class="field">
+            <label>Operator</label>
+            <select id="operator-1">
+              <option value="">Select...</option>
+              <option value="Dylan">Dylan</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label># of Screens</label>
+            <input type="number" id="screenCount-1" inputmode="numeric" placeholder="0" onchange="buildMeshDropdowns(1)">
+          </div>
+          <div class="field">
+            <label>Print Location</label>
+            <select id="printLocation-1">
+              <option value="">Select...</option>
+              <option value="Front">Front</option>
+              <option value="Back">Back</option>
+              <option value="Front & Back">Front & Back</option>
+              <option value="Left Chest">Left Chest</option>
+              <option value="Sleeve">Sleeve</option>
+              <option value="Multiple">Multiple</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="mesh-grid" id="meshGrid-1">
+          <!-- Dynamic mesh dropdowns appear here -->
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">Work Done</div>
+        <div class="chip-grid" id="jobTasks-1">
+          <div class="chip" onclick="toggleChip(this)"><b>A</b>&ensp;Shooting/Exposing</div>
+          <div class="chip" onclick="toggleChip(this)"><b>C</b>&ensp;Washout</div>
+          <div class="chip" onclick="toggleChip(this)"><b>D</b>&ensp;Taping</div>
+          <div class="chip" onclick="toggleOtherTask(this, 1)"><b>X</b>&ensp;Other</div>
+        </div>
+        <div class="delay-reason-field" id="otherTaskField-1">
+          <label style="color:var(--teal);">What did you do?</label>
+          <textarea id="otherTaskText-1" placeholder="Describe the task..." style="border-color:var(--teal);"></textarea>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">Timers</div>
+        <div class="timer-block" id="timerBlock-prep-1">
+          <div class="timer-left">
+            <div class="timer-label">Screen Prep</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span class="timer-display" id="timerDisplay-prep-1">0:00</span>
+            <button class="timer-btn start" id="timerBtn-prep-1" onclick="toggleTimer(1, 'prep')">Start</button>
+          </div>
+        </div>
+        <div class="timer-block" id="timerBlock-finish-1">
+          <div class="timer-left">
+            <div class="timer-label">Taping & Touchup</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span class="timer-display" id="timerDisplay-finish-1">0:00</span>
+            <button class="timer-btn start" id="timerBtn-finish-1" onclick="toggleTimer(1, 'finish')">Start</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- PER-JOB CUMULATIVE -->
+      <div class="cumulative">
+        <div class="cumulative-row">
+          <span class="cumulative-label">Prep</span>
+          <span class="cumulative-time teal" id="cumPrep-1">0:00</span>
+        </div>
+        <div class="cumulative-row">
+          <span class="cumulative-label">Between</span>
+          <span class="cumulative-time" style="color:var(--text-dim);" id="cumBetween-1">—</span>
+        </div>
+        <div class="cumulative-row">
+          <span class="cumulative-label">Finish</span>
+          <span class="cumulative-time teal" id="cumFinish-1">0:00</span>
+        </div>
+        <div class="cumulative-divider"></div>
+        <div class="cumulative-row total">
+          <span class="cumulative-label">Job Total</span>
+          <span class="cumulative-time teal" id="cumTotal-1">0:00</span>
+        </div>
+      </div>
+
+      <!-- RESHOOT -->
+      <div class="section">
+        <div class="section-label">Reshoot?</div>
+        <div class="chip-grid">
+          <div class="chip" id="reshootToggle-1" onclick="toggleReshoot(1)"><b>H</b>&ensp;This is a reshoot</div>
+        </div>
+        <div class="reshoot-section" id="reshootDetails-1">
+          <div class="field-row">
+            <div class="field">
+              <label>Reshoot Reason</label>
+              <select id="reshootReason-1">
+                <option value="">Select reason...</option>
+                <option value="Burned/overexposed">Burned/overexposed</option>
+                <option value="Underexposed">Underexposed</option>
+                <option value="Wrong mesh">Wrong mesh</option>
+                <option value="Image misalignment">Image misalignment</option>
+                <option value="Pinholes">Pinholes</option>
+                <option value="Emulsion breakdown">Emulsion breakdown</option>
+                <option value="CTS error">CTS error</option>
+                <option value="Press request">Press request</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="field">
+              <label># Screens Reshoot</label>
+              <input type="number" id="reshootCount-1" inputmode="numeric" placeholder="0">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PER-JOB SUBMIT -->
+      <button class="submit-btn" style="position:relative; margin-bottom:14px;" id="submitJobBtn-1" onclick="submitJob(1)">Submit Job 1</button>
+
+    </div>
+  </div>
+</div>
+
+<!-- ============================================= -->
+<!-- SHIFT MODE -->
+<!-- ============================================= -->
+<div class="shift-only">
+
+  <div class="section">
+    <div class="section-label">Shift Info</div>
+    <div class="field-row">
+      <div class="field">
+        <label>Operator</label>
+        <select id="shiftOperator">
+          <option value="">Select...</option>
+          <option value="Dylan">Dylan</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Screens Completed</label>
+        <input type="number" id="shiftScreens" inputmode="numeric" placeholder="0">
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Task — Pick one</div>
+    <div class="chip-grid" id="shiftTasks">
+      <div class="chip purple" onclick="selectShiftTask(this, 'purple')"><b>E</b>&ensp;Coating</div>
+      <div class="chip purple" onclick="selectShiftTask(this, 'purple')"><b>F</b>&ensp;Reclaim</div>
+      <div class="chip purple" onclick="selectShiftTask(this, 'purple')"><b>G</b>&ensp;Stretching</div>
+      <div class="chip purple" onclick="selectShiftTask(this, 'purple')"><b>I</b>&ensp;Cleaning</div>
+      <div class="chip purple" onclick="selectShiftTaskOther(this, 'purple')"><b>X</b>&ensp;Other</div>
+    </div>
+    <div class="delay-reason-field" id="otherShiftTaskField">
+      <label style="color:var(--purple);">What did you do?</label>
+      <textarea id="otherShiftTaskText" placeholder="Describe the task..." style="border-color:var(--purple);"></textarea>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Shift Timer</div>
+    <div class="timer-block" id="timerBlock-sWork">
+      <div class="timer-left">
+        <div class="timer-label">Work Session</div>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span class="timer-display" id="timerDisplay-sWork">0:00</span>
+        <button class="timer-btn start" id="timerBtn-sWork" onclick="toggleShiftTimer('sWork')">Start</button>
+      </div>
+    </div>
+    <div class="timer-block" id="timerBlock-sBreak">
+      <div class="timer-left">
+        <div class="timer-label">Break / Lunch</div>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span class="timer-display" id="timerDisplay-sBreak">0:00</span>
+        <button class="timer-btn start" id="timerBtn-sBreak" onclick="toggleShiftTimer('sBreak')">Start</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================= -->
+<!-- SHARED: Delays, Problems -->
+<!-- ============================================= -->
+
+<!-- DELAYS -->
+<div class="section">
+  <div class="section-label">Delays — Tap reason, timer starts</div>
+  <div class="chip-grid" id="delays">
+    <div class="chip orange" onclick="toggleDelay(this, 'cts')"><b>1</b>&ensp;CTS down</div>
+    <div class="chip orange" onclick="toggleDelay(this, 'equip')"><b>2</b>&ensp;Equipment issue</div>
+    <div class="chip orange" onclick="toggleDelay(this, 'drying')"><b>3</b>&ensp;Screens drying</div>
+    <div class="chip orange" onclick="toggleDelay(this, 'other')"><b>4</b>&ensp;Other delay</div>
+  </div>
+
+  <div class="delay-reason-field" id="reason-cts">
+    <label>Why is CTS down?</label>
+    <textarea id="reasonText-cts" placeholder="Describe the issue..."></textarea>
+  </div>
+  <div class="delay-reason-field" id="reason-equip">
+    <label>What equipment issue?</label>
+    <textarea id="reasonText-equip" placeholder="Describe the issue..."></textarea>
+  </div>
+  <div class="delay-reason-field" id="reason-other">
+    <label>What's causing the delay?</label>
+    <textarea id="reasonText-other" placeholder="Describe the issue..."></textarea>
+  </div>
+
+  <div class="waiting-block" id="waitingBlock">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <div>
+        <div style="font-size:12px; font-weight:600; color:var(--orange);">⏳ Delay Timer</div>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:22px; font-weight:700; color:var(--orange);" id="waitingTimer">0:00</div>
+      </div>
+      <button onclick="endDelay()" style="padding:14px 24px; border-radius:8px; background:var(--orange); color:#fff; border:none; font-family:'DM Sans',sans-serif; font-size:14px; font-weight:700; cursor:pointer;">DELAY OVER</button>
+    </div>
+  </div>
+</div>
+
+<!-- PROBLEMS -->
+<div class="section">
+  <div class="section-label">Problems Encountered</div>
+  <div class="chip-grid" id="problems">
+    <div class="chip red" onclick="toggleChip(this, 'red')"><b>P1</b>&ensp;CTS malfunction</div>
+    <div class="chip red" onclick="toggleChip(this, 'red')"><b>P2</b>&ensp;Exposure issues</div>
+    <div class="chip red" onclick="toggleChip(this, 'red')"><b>P3</b>&ensp;Emulsion problems</div>
+    <div class="chip red" onclick="toggleChip(this, 'red')"><b>P4</b>&ensp;Water/plumbing</div>
+    <div class="chip red" onclick="toggleChip(this, 'red')"><b>P5</b>&ensp;Mesh/frame damage</div>
+    <div class="chip red" onclick="toggleChip(this, 'red')"><b>P6</b>&ensp;Equipment breakdown</div>
+    <div class="chip red" onclick="toggleSupplyShortage(this)"><b>P7</b>&ensp;Supply shortage</div>
+    <div class="chip red" onclick="toggleOtherProblem(this)"><b>P8</b>&ensp;Other problem</div>
+  </div>
+  <div class="delay-reason-field" id="supplyShortageField">
+    <label style="color:var(--red);">What supply is short?</label>
+    <textarea id="supplyShortageText" placeholder="Describe the shortage..." style="border-color:var(--red);"></textarea>
+  </div>
+  <div class="delay-reason-field" id="otherProblemField">
+    <label style="color:var(--red);">What's the problem?</label>
+    <textarea id="otherProblemText" placeholder="Describe the problem..." style="border-color:var(--red);"></textarea>
+  </div>
+</div>
+
+<!-- SHIFT MODE SUBMIT -->
+<div class="shift-only">
+  <div class="submit-bar">
+    <button class="submit-btn" id="shiftSubmitBtn" onclick="submitShiftLog()">Submit Shift Log</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== MODE =====
+let currentMode = 'job';
+
+function setMode(mode) {
+  currentMode = mode;
+  document.body.className = `mode-${mode}`;
+  document.getElementById('modeJobBtn').className = mode === 'job' ? 'mode-btn active' : 'mode-btn';
+  document.getElementById('modeShiftBtn').className = mode === 'shift' ? 'mode-btn active shift' : 'mode-btn';
+}
+
+// ===== CLOCK =====
+function updateClock() {
+  const now = new Date();
+  const date = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  const time = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  document.getElementById('clock').textContent = `${date} · ${time}`;
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+// ===== DAILY CONDITIONS =====
+function updateDCStatus() {
+  const am = document.getElementById('globalHumidityAM').value;
+  const pm = document.getElementById('globalHumidityPM').value;
+  const el = document.getElementById('dcStatus');
+  if (am || pm) {
+    const parts = [];
+    if (am) parts.push(`AM: ${am}%`);
+    if (pm) parts.push(`PM: ${pm}%`);
+    el.textContent = '✓ ' + parts.join(' · ');
+  } else {
+    el.textContent = '';
+  }
+}
+
+// ===== MESH OPTIONS =====
+const MESH_OPTIONS = ['', '86', '110', '156', '160', '200', '230', '305'];
+
+function buildMeshDropdowns(jobId) {
+  const count = parseInt(document.getElementById(`screenCount-${jobId}`).value) || 0;
+  const grid = document.getElementById(`meshGrid-${jobId}`);
+  const clamped = Math.min(Math.max(count, 0), 12);
+
+  // Preserve existing selections
+  const existing = {};
+  grid.querySelectorAll('select').forEach(sel => {
+    const idx = sel.dataset.screenIdx;
+    if (sel.value) existing[idx] = sel.value;
+  });
+
+  grid.innerHTML = '';
+  for (let i = 1; i <= clamped; i++) {
+    const div = document.createElement('div');
+    div.className = 'field';
+    const label = document.createElement('label');
+    label.textContent = `Screen ${i} Mesh`;
+    const select = document.createElement('select');
+    select.id = `mesh-${jobId}-${i}`;
+    select.dataset.screenIdx = i;
+    MESH_OPTIONS.forEach(opt => {
+      const o = document.createElement('option');
+      o.value = opt;
+      o.textContent = opt || 'Select...';
+      select.appendChild(o);
+    });
+    if (existing[i]) select.value = existing[i];
+    div.appendChild(label);
+    div.appendChild(select);
+    grid.appendChild(div);
+  }
+}
+
+// ===== JOB MANAGEMENT =====
+let jobCounter = 1;
+let activeJobId = 1;
+let jobs = {
+  1: { submitted: false, reshoot: false }
+};
+
+// Per-job timers: each job has prep and finish
+// prepEndedAt / finishStartedAt track the gap between stages ("Between" time)
+let jobTimers = {
+  1: {
+    prep: { elapsed: 0, running: false, startedAt: null },
+    finish: { elapsed: 0, running: false, startedAt: null },
+    prepEndedAt: null,
+    finishStartedAt: null
+  }
+};
+
+function addJob() {
+  jobCounter++;
+  const id = jobCounter;
+  jobs[id] = { submitted: false, reshoot: false };
+  jobTimers[id] = {
+    prep: { elapsed: 0, running: false, startedAt: null },
+    finish: { elapsed: 0, running: false, startedAt: null },
+    prepEndedAt: null,
+    finishStartedAt: null
+  };
+
+  // Create tab
+  const tabsContainer = document.getElementById('jobTabs');
+  const addBtn = tabsContainer.querySelector('.add-job-btn');
+  const tab = document.createElement('div');
+  tab.className = 'job-tab';
+  tab.dataset.jobId = id;
+  tab.onclick = () => switchJob(id);
+  tab.innerHTML = `
+    <span class="tab-label">Job ${id}</span>
+    <span class="tab-timer tab-idle" id="tabTimer-${id}">0:00</span>
+    <div class="tab-close" onclick="event.stopPropagation(); removeJob(${id})">×</div>
+  `;
+  tabsContainer.insertBefore(tab, addBtn);
+
+  // Create panel by cloning structure
+  const panel = document.createElement('div');
+  panel.className = 'job-panel';
+  panel.id = `jobPanel-${id}`;
+  panel.dataset.jobId = id;
+  panel.innerHTML = buildJobPanelHTML(id);
+  document.getElementById('jobPanelsContainer').appendChild(panel);
+
+  switchJob(id);
+}
+
+function buildJobPanelHTML(id) {
+  return `
+    <div class="section">
+      <div class="section-label">Job Info</div>
+      <div class="field-row">
+        <div class="field">
+          <label>Order #</label>
+          <input type="text" id="orderNum-${id}" inputmode="text" placeholder="Job number" onchange="updateTabLabel(${id})">
+        </div>
+        <div class="field">
+          <label>Operator</label>
+          <select id="operator-${id}">
+            <option value="">Select...</option>
+            <option value="Dylan">Dylan</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label># of Screens</label>
+          <input type="number" id="screenCount-${id}" inputmode="numeric" placeholder="0" onchange="buildMeshDropdowns(${id})">
+        </div>
+        <div class="field">
+          <label>Print Location</label>
+          <select id="printLocation-${id}">
+            <option value="">Select...</option>
+            <option value="Front">Front</option>
+            <option value="Back">Back</option>
+            <option value="Front & Back">Front & Back</option>
+            <option value="Left Chest">Left Chest</option>
+            <option value="Sleeve">Sleeve</option>
+            <option value="Multiple">Multiple</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="mesh-grid" id="meshGrid-${id}"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Work Done</div>
+      <div class="chip-grid" id="jobTasks-${id}">
+        <div class="chip" onclick="toggleChip(this)"><b>A</b>&ensp;Shooting/Exposing</div>
+        <div class="chip" onclick="toggleChip(this)"><b>C</b>&ensp;Washout</div>
+        <div class="chip" onclick="toggleChip(this)"><b>D</b>&ensp;Taping</div>
+        <div class="chip" onclick="toggleOtherTask(this, ${id})"><b>X</b>&ensp;Other</div>
+      </div>
+      <div class="delay-reason-field" id="otherTaskField-${id}">
+        <label style="color:var(--teal);">What did you do?</label>
+        <textarea id="otherTaskText-${id}" placeholder="Describe the task..." style="border-color:var(--teal);"></textarea>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Timers</div>
+      <div class="timer-block" id="timerBlock-prep-${id}">
+        <div class="timer-left">
+          <div class="timer-label">Screen Prep</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span class="timer-display" id="timerDisplay-prep-${id}">0:00</span>
+          <button class="timer-btn start" id="timerBtn-prep-${id}" onclick="toggleTimer(${id}, 'prep')">Start</button>
+        </div>
+      </div>
+      <div class="timer-block" id="timerBlock-finish-${id}">
+        <div class="timer-left">
+          <div class="timer-label">Taping & Touchup</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span class="timer-display" id="timerDisplay-finish-${id}">0:00</span>
+          <button class="timer-btn start" id="timerBtn-finish-${id}" onclick="toggleTimer(${id}, 'finish')">Start</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="cumulative">
+      <div class="cumulative-row">
+        <span class="cumulative-label">Prep</span>
+        <span class="cumulative-time teal" id="cumPrep-${id}">0:00</span>
+      </div>
+      <div class="cumulative-row">
+        <span class="cumulative-label">Between</span>
+        <span class="cumulative-time" style="color:var(--text-dim);" id="cumBetween-${id}">—</span>
+      </div>
+      <div class="cumulative-row">
+        <span class="cumulative-label">Finish</span>
+        <span class="cumulative-time teal" id="cumFinish-${id}">0:00</span>
+      </div>
+      <div class="cumulative-divider"></div>
+      <div class="cumulative-row total">
+        <span class="cumulative-label">Job Total</span>
+        <span class="cumulative-time teal" id="cumTotal-${id}">0:00</span>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Reshoot?</div>
+      <div class="chip-grid">
+        <div class="chip" id="reshootToggle-${id}" onclick="toggleReshoot(${id})"><b>H</b>&ensp;This is a reshoot</div>
+      </div>
+      <div class="reshoot-section" id="reshootDetails-${id}">
+        <div class="field-row">
+          <div class="field">
+            <label>Reshoot Reason</label>
+            <select id="reshootReason-${id}">
+              <option value="">Select reason...</option>
+              <option value="Burned/overexposed">Burned/overexposed</option>
+              <option value="Underexposed">Underexposed</option>
+              <option value="Wrong mesh">Wrong mesh</option>
+              <option value="Image misalignment">Image misalignment</option>
+              <option value="Pinholes">Pinholes</option>
+              <option value="Emulsion breakdown">Emulsion breakdown</option>
+              <option value="CTS error">CTS error</option>
+              <option value="Press request">Press request</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="field">
+            <label># Screens Reshoot</label>
+            <input type="number" id="reshootCount-${id}" inputmode="numeric" placeholder="0">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button class="submit-btn" style="position:relative; margin-bottom:14px;" id="submitJobBtn-${id}" onclick="submitJob(${id})">Submit Job ${id}</button>
+  `;
+}
+
+function switchJob(id) {
+  if (jobs[id].submitted) return;
+  activeJobId = id;
+
+  // Update tabs
+  document.querySelectorAll('.job-tab').forEach(tab => {
+    tab.classList.toggle('active', parseInt(tab.dataset.jobId) === id);
+  });
+
+  // Update panels
+  document.querySelectorAll('.job-panel').forEach(panel => {
+    panel.classList.toggle('active', parseInt(panel.dataset.jobId) === id);
+  });
+}
+
+function removeJob(id) {
+  // Don't remove last job or submitted jobs
+  const activeJobs = Object.keys(jobs).filter(k => !jobs[k].submitted);
+  if (activeJobs.length <= 1) return;
+
+  // Stop any running timers
+  ['prep', 'finish'].forEach(type => {
+    if (jobTimers[id][type].running) {
+      jobTimers[id][type].elapsed += Math.floor((Date.now() - jobTimers[id][type].startedAt) / 1000);
+      jobTimers[id][type].running = false;
+    }
+  });
+
+  // Remove tab and panel
+  const tab = document.querySelector(`.job-tab[data-job-id="${id}"]`);
+  const panel = document.getElementById(`jobPanel-${id}`);
+  if (tab) tab.remove();
+  if (panel) panel.remove();
+  delete jobs[id];
+  delete jobTimers[id];
+
+  // Switch to first available job
+  const remaining = Object.keys(jobs).filter(k => !jobs[k].submitted);
+  if (remaining.length > 0) switchJob(parseInt(remaining[0]));
+}
+
+function updateTabLabel(id) {
+  const order = document.getElementById(`orderNum-${id}`).value.trim();
+  const label = document.querySelector(`.job-tab[data-job-id="${id}"] .tab-label`);
+  if (label) {
+    label.textContent = order ? `#${order}` : `Job ${id}`;
+  }
+  // Also update submit button
+  const btn = document.getElementById(`submitJobBtn-${id}`);
+  if (btn) btn.textContent = order ? `Submit #${order}` : `Submit Job ${id}`;
+}
+
+// ===== JOB TIMERS (manual pause/start) =====
+function toggleTimer(jobId, type) {
+  const timer = jobTimers[jobId][type];
+  const block = document.getElementById(`timerBlock-${type}-${jobId}`);
+  const btn = document.getElementById(`timerBtn-${type}-${jobId}`);
+
+  if (timer.running) {
+    // Pause
+    timer.elapsed += Math.floor((Date.now() - timer.startedAt) / 1000);
+    timer.running = false;
+    timer.startedAt = null;
+    block.className = 'timer-block paused';
+    btn.className = 'timer-btn resume';
+    btn.textContent = 'Resume';
+
+    // Track when prep ends (update each pause — last pause is what matters)
+    if (type === 'prep') {
+      jobTimers[jobId].prepEndedAt = Date.now();
+    }
+  } else {
+    // Start / Resume
+    timer.running = true;
+    timer.startedAt = Date.now();
+    block.className = 'timer-block running';
+    btn.className = 'timer-btn pause';
+    btn.textContent = 'Pause';
+
+    // Track when finish first starts
+    if (type === 'finish' && jobTimers[jobId].finishStartedAt === null) {
+      jobTimers[jobId].finishStartedAt = Date.now();
+    }
+  }
+}
+
+function getTimerSeconds(jobId, type) {
+  const timer = jobTimers[jobId][type];
+  let total = timer.elapsed;
+  if (timer.running) total += Math.floor((Date.now() - timer.startedAt) / 1000);
+  return total;
+}
+
+// ===== SHIFT TIMERS =====
+let shiftTimers = {
+  sWork: { elapsed: 0, running: false, startedAt: null },
+  sBreak: { elapsed: 0, running: false, startedAt: null }
+};
+
+function toggleShiftTimer(name) {
+  const timer = shiftTimers[name];
+  const block = document.getElementById(`timerBlock-${name}`);
+  const btn = document.getElementById(`timerBtn-${name}`);
+
+  if (timer.running) {
+    timer.elapsed += Math.floor((Date.now() - timer.startedAt) / 1000);
+    timer.running = false;
+    timer.startedAt = null;
+    block.className = 'timer-block paused';
+    btn.className = 'timer-btn resume';
+    btn.textContent = 'Resume';
+  } else {
+    timer.running = true;
+    timer.startedAt = Date.now();
+    block.className = 'timer-block running';
+    btn.className = 'timer-btn pause';
+    btn.textContent = 'Pause';
+  }
+}
+
+function getShiftTimerSeconds(name) {
+  const timer = shiftTimers[name];
+  let total = timer.elapsed;
+  if (timer.running) total += Math.floor((Date.now() - timer.startedAt) / 1000);
+  return total;
+}
+
+// ===== DELAY TIMER =====
+let waitingElapsed = 0;
+let waitingRunning = false;
+let waitingStartedAt = null;
+let activeDelays = {};
+
+function toggleDelay(el, delayId) {
+  el.classList.toggle('selected');
+  el.classList.toggle('orange');
+  const isSelected = el.classList.contains('selected');
+  const reasonEl = document.getElementById(`reason-${delayId}`);
+  if (reasonEl) reasonEl.classList.toggle('visible', isSelected);
+
+  if (isSelected) {
+    activeDelays[delayId] = true;
+  } else {
+    delete activeDelays[delayId];
+  }
+
+  const anyDelay = Object.keys(activeDelays).length > 0;
+  if (anyDelay && !waitingRunning) {
+    waitingRunning = true;
+    waitingStartedAt = Date.now();
+    document.getElementById('waitingBlock').classList.add('active');
+  }
+}
+
+function endDelay() {
+  if (waitingRunning) {
+    waitingElapsed += Math.floor((Date.now() - waitingStartedAt) / 1000);
+    waitingRunning = false;
+    waitingStartedAt = null;
+  }
+  document.getElementById('waitingBlock').classList.remove('active');
+}
+
+// ===== DISPLAY UPDATE LOOP =====
+function formatTime(sec) {
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}:${('0' + s).slice(-2)}`;
+}
+
+setInterval(() => {
+  // Update all job timers
+  for (const jobId in jobTimers) {
+    const prepSec = getTimerSeconds(jobId, 'prep');
+    const finishSec = getTimerSeconds(jobId, 'finish');
+    const totalSec = prepSec + finishSec;
+
+    const prepEl = document.getElementById(`timerDisplay-prep-${jobId}`);
+    const finishEl = document.getElementById(`timerDisplay-finish-${jobId}`);
+    const cumPrepEl = document.getElementById(`cumPrep-${jobId}`);
+    const cumBetweenEl = document.getElementById(`cumBetween-${jobId}`);
+    const cumFinishEl = document.getElementById(`cumFinish-${jobId}`);
+    const cumTotalEl = document.getElementById(`cumTotal-${jobId}`);
+
+    if (prepEl) prepEl.textContent = formatTime(prepSec);
+    if (finishEl) finishEl.textContent = formatTime(finishSec);
+    if (cumPrepEl) cumPrepEl.textContent = formatTime(prepSec);
+    if (cumFinishEl) cumFinishEl.textContent = formatTime(finishSec);
+    if (cumTotalEl) cumTotalEl.textContent = formatTime(totalSec);
+
+    // Calculate between time (gap between prep end and finish start)
+    if (cumBetweenEl) {
+      const pe = jobTimers[jobId].prepEndedAt;
+      const fs = jobTimers[jobId].finishStartedAt;
+      if (pe && fs && fs > pe) {
+        // Finish has started — show final between time
+        const betweenSec = Math.floor((fs - pe) / 1000);
+        cumBetweenEl.textContent = formatTime(betweenSec);
+        cumBetweenEl.style.color = 'var(--text)';
+      } else if (pe && !fs) {
+        // Prep ended but finish hasn't started — show live counting
+        const liveBetween = Math.floor((Date.now() - pe) / 1000);
+        cumBetweenEl.textContent = formatTime(liveBetween);
+        cumBetweenEl.style.color = 'var(--text-dim)';
+      } else {
+        cumBetweenEl.textContent = '—';
+        cumBetweenEl.style.color = 'var(--text-dim)';
+      }
+    }
+
+    // Update tab timer
+    const tabTimer = document.getElementById(`tabTimer-${jobId}`);
+    if (tabTimer) {
+      tabTimer.textContent = formatTime(totalSec);
+      const isRunning = jobTimers[jobId].prep.running || jobTimers[jobId].finish.running;
+      const hasTime = totalSec > 0;
+      tabTimer.className = 'tab-timer ' + (isRunning ? 'tab-running' : (hasTime ? 'tab-paused' : 'tab-idle'));
+    }
+  }
+
+  // Update shift timers
+  for (const name of ['sWork', 'sBreak']) {
+    const sec = getShiftTimerSeconds(name);
+    const el = document.getElementById(`timerDisplay-${name}`);
+    if (el) el.textContent = formatTime(sec);
+  }
+
+  // Update delay timer
+  let waitTotal = waitingElapsed;
+  if (waitingRunning) waitTotal += Math.floor((Date.now() - waitingStartedAt) / 1000);
+  if (waitingRunning) document.getElementById('waitingTimer').textContent = formatTime(waitTotal);
+}, 500);
+
+// ===== CHIPS =====
+function toggleChip(el, color) {
+  el.classList.toggle('selected');
+  if (color) el.classList.toggle(color);
+}
+
+function toggleOtherTask(el, jobId) {
+  el.classList.toggle('selected');
+  document.getElementById(`otherTaskField-${jobId}`).classList.toggle('visible', el.classList.contains('selected'));
+}
+
+function selectShiftTask(el, color) {
+  const wasSelected = el.classList.contains('selected');
+  document.querySelectorAll('#shiftTasks .chip').forEach(c => c.classList.remove('selected', 'purple'));
+  document.getElementById('otherShiftTaskField').classList.remove('visible');
+  if (!wasSelected) el.classList.add('selected', color);
+}
+
+function selectShiftTaskOther(el, color) {
+  const wasSelected = el.classList.contains('selected');
+  document.querySelectorAll('#shiftTasks .chip').forEach(c => c.classList.remove('selected', 'purple'));
+  document.getElementById('otherShiftTaskField').classList.remove('visible');
+  if (!wasSelected) {
+    el.classList.add('selected', color);
+    document.getElementById('otherShiftTaskField').classList.add('visible');
+  }
+}
+
+// ===== RESHOOT =====
+function toggleReshoot(jobId) {
+  jobs[jobId].reshoot = !jobs[jobId].reshoot;
+  document.getElementById(`reshootToggle-${jobId}`).classList.toggle('selected', jobs[jobId].reshoot);
+  document.getElementById(`reshootDetails-${jobId}`).classList.toggle('visible', jobs[jobId].reshoot);
+}
+
+function toggleSupplyShortage(el) {
+  el.classList.toggle('selected');
+  el.classList.toggle('red');
+  document.getElementById('supplyShortageField').classList.toggle('visible', el.classList.contains('selected'));
+}
+
+function toggleOtherProblem(el) {
+  el.classList.toggle('selected');
+  el.classList.toggle('red');
+  document.getElementById('otherProblemField').classList.toggle('visible', el.classList.contains('selected'));
+}
+
+// ===== TOAST =====
+function showToast(msg, isError) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(() => t.className = 'toast', 2500);
+}
+
+// ===== HELPER: get selected chips =====
+function getSelectedChips(containerId) {
+  return Array.from(document.querySelectorAll(`#${containerId} .chip.selected`))
+    .map(c => c.textContent.trim());
+}
+
+// ===== SUBMIT JOB =====
+function submitJob(jobId) {
+  const btn = document.getElementById(`submitJobBtn-${jobId}`);
+  btn.disabled = true;
+  btn.textContent = 'Submitting...';
+  const now = new Date();
+
+  // Stop running timers for this job
+  ['prep', 'finish'].forEach(type => {
+    if (jobTimers[jobId][type].running) {
+      jobTimers[jobId][type].elapsed += Math.floor((Date.now() - jobTimers[jobId][type].startedAt) / 1000);
+      jobTimers[jobId][type].running = false;
+      jobTimers[jobId][type].startedAt = null;
+    }
+  });
+
+  // Gather mesh values
+  const screenCount = parseInt(document.getElementById(`screenCount-${jobId}`).value) || 0;
+  const meshValues = {};
+  for (let i = 1; i <= 12; i++) {
+    const sel = document.getElementById(`mesh-${jobId}-${i}`);
+    meshValues[`mesh${i}`] = sel ? sel.value : '';
+  }
+
+  // Gather tasks
+  let tasks = getSelectedChips(`jobTasks-${jobId}`).join(', ');
+  const otherText = document.getElementById(`otherTaskText-${jobId}`);
+  if (otherText && otherText.value.trim() && tasks.indexOf('Other') >= 0) {
+    tasks = tasks.replace('X  Other', 'Other: ' + otherText.value.trim());
+  }
+
+  // Gather delay info (shared across jobs)
+  if (waitingRunning) {
+    waitingElapsed += Math.floor((Date.now() - waitingStartedAt) / 1000);
+    waitingRunning = false;
+    waitingStartedAt = null;
+  }
+
+  const delayReasons = [];
+  if (activeDelays.cts) {
+    const reason = document.getElementById('reasonText-cts').value.trim();
+    delayReasons.push('CTS down' + (reason ? ': ' + reason : ''));
+  }
+  if (activeDelays.equip) {
+    const reason = document.getElementById('reasonText-equip').value.trim();
+    delayReasons.push('Equipment issue' + (reason ? ': ' + reason : ''));
+  }
+  if (activeDelays.drying) delayReasons.push('Screens drying');
+  if (activeDelays.other) {
+    const reason = document.getElementById('reasonText-other').value.trim();
+    delayReasons.push('Other' + (reason ? ': ' + reason : ''));
+  }
+
+  // Gather problems (shared)
+  let probs = getSelectedChips('problems').join(', ');
+  const supplyText = document.getElementById('supplyShortageText').value.trim();
+  if (supplyText && probs.indexOf('Supply shortage') >= 0) {
+    probs = probs.replace('Supply shortage', 'Supply shortage: ' + supplyText);
+  }
+  const otherProbText = document.getElementById('otherProblemText').value.trim();
+  if (otherProbText && probs.indexOf('Other problem') >= 0) {
+    probs = probs.replace('Other problem', 'Other problem: ' + otherProbText);
+  }
+
+  const prepSec = getTimerSeconds(jobId, 'prep');
+  const finishSec = getTimerSeconds(jobId, 'finish');
+  const workSec = prepSec + finishSec;
+  const isReshoot = jobs[jobId].reshoot;
+
+  // Calculate "between" time — gap between prep ending and finish starting
+  let betweenSec = 0;
+  const pe = jobTimers[jobId].prepEndedAt;
+  const fs = jobTimers[jobId].finishStartedAt;
+  if (pe && fs && fs > pe) {
+    betweenSec = Math.floor((fs - pe) / 1000);
+  }
+
+  const data = {
+    source: 'darkroom',
+    mode: 'job',
+    timestamp: now.toISOString(),
+    date: `${now.getMonth() + 1}/${now.getDate()}/${now.getFullYear()}`,
+    time: now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+    order: document.getElementById(`orderNum-${jobId}`).value,
+    operator: document.getElementById(`operator-${jobId}`).value,
+    screenCount: screenCount,
+    mesh1: meshValues.mesh1 || '', mesh2: meshValues.mesh2 || '', mesh3: meshValues.mesh3 || '',
+    mesh4: meshValues.mesh4 || '', mesh5: meshValues.mesh5 || '', mesh6: meshValues.mesh6 || '',
+    mesh7: meshValues.mesh7 || '', mesh8: meshValues.mesh8 || '', mesh9: meshValues.mesh9 || '',
+    mesh10: meshValues.mesh10 || '', mesh11: meshValues.mesh11 || '', mesh12: meshValues.mesh12 || '',
+    printLocation: document.getElementById(`printLocation-${jobId}`).value,
+    humidityAM: document.getElementById('globalHumidityAM').value,
+    humidityPM: document.getElementById('globalHumidityPM').value,
+    tasks: tasks,
+    prepMin: Math.round(prepSec / 60 * 10) / 10,
+    betweenMin: Math.round(betweenSec / 60 * 10) / 10,
+    finishMin: Math.round(finishSec / 60 * 10) / 10,
+    totalWorkMin: Math.round(workSec / 60 * 10) / 10,
+    delayMin: Math.round(waitingElapsed / 60 * 10) / 10,
+    delayReasons: delayReasons.join(' | '),
+    isReshoot: isReshoot ? 'Yes' : 'No',
+    reshootCount: isReshoot ? (document.getElementById(`reshootCount-${jobId}`).value || '0') : '0',
+    reshootReason: isReshoot ? document.getElementById(`reshootReason-${jobId}`).value : '',
+    delays: getSelectedChips('delays').join(', '),
+    problems: probs
+  };
+
+  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyWg6MvXKZtIWyqzL1_wyXmB4BR5xLRt_mjdYUj_nMEynj0lR5TIFdsNmjlRCI56Tmjtw/exec';
+
+  fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(data) })
+  .then(() => {
+    showToast('✓ Job logged!', false);
+
+    // Remove submitted job's tab and panel
+    const tab = document.querySelector(`.job-tab[data-job-id="${jobId}"]`);
+    const panel = document.getElementById(`jobPanel-${jobId}`);
+    if (tab) tab.remove();
+    if (panel) panel.remove();
+    delete jobs[jobId];
+    delete jobTimers[jobId];
+
+    // Check if any jobs remain
+    const remaining = Object.keys(jobs).filter(k => !jobs[k].submitted);
+    if (remaining.length > 0) {
+      // Switch to next open job
+      switchJob(parseInt(remaining[0]));
+    } else {
+      // All jobs submitted — reset to a fresh single job
+      resetToNewJob();
+    }
+  })
+  .catch(err => {
+    showToast('✗ Failed to submit', true);
+    console.error(err);
+    btn.disabled = false;
+    const order = document.getElementById(`orderNum-${jobId}`).value.trim();
+    btn.textContent = order ? `Submit #${order}` : `Submit Job ${jobId}`;
+  });
+}
+
+function resetToNewJob() {
+  // Clear all tabs and panels
+  const tabsContainer = document.getElementById('jobTabs');
+  tabsContainer.querySelectorAll('.job-tab').forEach(t => t.remove());
+  document.getElementById('jobPanelsContainer').innerHTML = '';
+
+  // Reset counters
+  jobCounter = 1;
+  activeJobId = 1;
+  jobs = { 1: { submitted: false, reshoot: false } };
+  jobTimers = {
+    1: {
+      prep: { elapsed: 0, running: false, startedAt: null },
+      finish: { elapsed: 0, running: false, startedAt: null },
+      prepEndedAt: null,
+      finishStartedAt: null
+    }
+  };
+
+  // Create fresh tab
+  const addBtn = tabsContainer.querySelector('.add-job-btn');
+  const tab = document.createElement('div');
+  tab.className = 'job-tab active';
+  tab.dataset.jobId = '1';
+  tab.onclick = () => switchJob(1);
+  tab.innerHTML = `
+    <span class="tab-label">Job 1</span>
+    <span class="tab-timer tab-idle" id="tabTimer-1">0:00</span>
+    <div class="tab-close" onclick="event.stopPropagation(); removeJob(1)">×</div>
+  `;
+  tabsContainer.insertBefore(tab, addBtn);
+
+  // Create fresh panel
+  const panel = document.createElement('div');
+  panel.className = 'job-panel active';
+  panel.id = 'jobPanel-1';
+  panel.dataset.jobId = '1';
+  panel.innerHTML = buildJobPanelHTML(1);
+  document.getElementById('jobPanelsContainer').appendChild(panel);
+
+  // Reset delays and problems (shared sections)
+  waitingElapsed = 0; waitingRunning = false; waitingStartedAt = null;
+  document.getElementById('waitingTimer').textContent = '0:00';
+  document.getElementById('waitingBlock').classList.remove('active');
+  activeDelays = {};
+  document.querySelectorAll('#delays .chip').forEach(c => c.classList.remove('selected', 'orange'));
+  document.querySelectorAll('.delay-reason-field').forEach(el => {
+    el.classList.remove('visible');
+    const ta = el.querySelector('textarea');
+    if (ta) ta.value = '';
+  });
+  document.querySelectorAll('#problems .chip').forEach(c => c.classList.remove('selected', 'red'));
+  document.getElementById('supplyShortageField').classList.remove('visible');
+  document.getElementById('supplyShortageText').value = '';
+  document.getElementById('otherProblemField').classList.remove('visible');
+  document.getElementById('otherProblemText').value = '';
+
+  // Humidity stays — don't touch it
+  window.scrollTo(0, 0);
+}
+
+// ===== SUBMIT SHIFT LOG =====
+function submitShiftLog() {
+  const btn = document.getElementById('shiftSubmitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Submitting...';
+  const now = new Date();
+
+  // Stop shift timers
+  ['sWork', 'sBreak'].forEach(name => {
+    if (shiftTimers[name].running) {
+      shiftTimers[name].elapsed += Math.floor((Date.now() - shiftTimers[name].startedAt) / 1000);
+      shiftTimers[name].running = false;
+      shiftTimers[name].startedAt = null;
+    }
+  });
+
+  if (waitingRunning) {
+    waitingElapsed += Math.floor((Date.now() - waitingStartedAt) / 1000);
+    waitingRunning = false;
+    waitingStartedAt = null;
+  }
+
+  const delayReasons = [];
+  if (activeDelays.cts) {
+    const reason = document.getElementById('reasonText-cts').value.trim();
+    delayReasons.push('CTS down' + (reason ? ': ' + reason : ''));
+  }
+  if (activeDelays.equip) {
+    const reason = document.getElementById('reasonText-equip').value.trim();
+    delayReasons.push('Equipment issue' + (reason ? ': ' + reason : ''));
+  }
+  if (activeDelays.drying) delayReasons.push('Screens drying');
+  if (activeDelays.other) {
+    const reason = document.getElementById('reasonText-other').value.trim();
+    delayReasons.push('Other' + (reason ? ': ' + reason : ''));
+  }
+
+  let tasks = getSelectedChips('shiftTasks').join(', ');
+  const otherText = document.getElementById('otherShiftTaskText').value.trim();
+  if (otherText && tasks.indexOf('Other') >= 0) {
+    tasks = tasks.replace('X  Other', 'Other: ' + otherText);
+  }
+
+  let probs = getSelectedChips('problems').join(', ');
+  const supplyText = document.getElementById('supplyShortageText').value.trim();
+  if (supplyText && probs.indexOf('Supply shortage') >= 0) {
+    probs = probs.replace('Supply shortage', 'Supply shortage: ' + supplyText);
+  }
+  const otherProbText = document.getElementById('otherProblemText').value.trim();
+  if (otherProbText && probs.indexOf('Other problem') >= 0) {
+    probs = probs.replace('Other problem', 'Other problem: ' + otherProbText);
+  }
+
+  const data = {
+    source: 'darkroom',
+    mode: 'shift',
+    timestamp: now.toISOString(),
+    date: `${now.getMonth() + 1}/${now.getDate()}/${now.getFullYear()}`,
+    time: now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+    order: '',
+    operator: document.getElementById('shiftOperator').value,
+    screenCount: document.getElementById('shiftScreens').value,
+    mesh1: '', mesh2: '', mesh3: '', mesh4: '', mesh5: '', mesh6: '',
+    mesh7: '', mesh8: '', mesh9: '', mesh10: '', mesh11: '', mesh12: '',
+    printLocation: '',
+    humidityAM: document.getElementById('globalHumidityAM').value,
+    humidityPM: document.getElementById('globalHumidityPM').value,
+    tasks: tasks,
+    prepMin: 0,
+    finishMin: 0,
+    totalWorkMin: Math.round(getShiftTimerSeconds('sWork') / 60 * 10) / 10,
+    breakMin: Math.round(getShiftTimerSeconds('sBreak') / 60 * 10) / 10,
+    delayMin: Math.round(waitingElapsed / 60 * 10) / 10,
+    delayReasons: delayReasons.join(' | '),
+    isReshoot: 'No',
+    reshootCount: '0',
+    reshootReason: '',
+    delays: getSelectedChips('delays').join(', '),
+    problems: probs
+  };
+
+  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyWg6MvXKZtIWyqzL1_wyXmB4BR5xLRt_mjdYUj_nMEynj0lR5TIFdsNmjlRCI56Tmjtw/exec';
+
+  fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(data) })
+  .then(() => {
+    showToast('✓ Shift logged!', false);
+    resetShiftForm();
+  })
+  .catch(err => {
+    showToast('✗ Failed to submit', true);
+    console.error(err);
+  })
+  .finally(() => {
+    btn.disabled = false;
+    btn.textContent = 'Submit Shift Log';
+  });
+}
+
+function resetShiftForm() {
+  document.getElementById('shiftScreens').value = '';
+  // Don't reset humidity — it's persistent
+
+  document.querySelectorAll('#shiftTasks .chip').forEach(c => c.classList.remove('selected', 'purple'));
+  document.getElementById('otherShiftTaskField').classList.remove('visible');
+  document.getElementById('otherShiftTaskText').value = '';
+
+  shiftTimers.sWork = { elapsed: 0, running: false, startedAt: null };
+  shiftTimers.sBreak = { elapsed: 0, running: false, startedAt: null };
+  ['sWork', 'sBreak'].forEach(name => {
+    document.getElementById(`timerBlock-${name}`).className = 'timer-block';
+    document.getElementById(`timerBtn-${name}`).className = 'timer-btn start';
+    document.getElementById(`timerBtn-${name}`).textContent = 'Start';
+    document.getElementById(`timerDisplay-${name}`).textContent = '0:00';
+  });
+
+  // Reset delays
+  waitingElapsed = 0; waitingRunning = false; waitingStartedAt = null;
+  document.getElementById('waitingTimer').textContent = '0:00';
+  document.getElementById('waitingBlock').classList.remove('active');
+  activeDelays = {};
+  document.querySelectorAll('#delays .chip').forEach(c => c.classList.remove('selected', 'orange'));
+  document.querySelectorAll('.delay-reason-field').forEach(el => {
+    el.classList.remove('visible');
+    const ta = el.querySelector('textarea');
+    if (ta) ta.value = '';
+  });
+
+  // Reset problems
+  document.querySelectorAll('#problems .chip').forEach(c => c.classList.remove('selected', 'red'));
+  document.getElementById('supplyShortageField').classList.remove('visible');
+  document.getElementById('supplyShortageText').value = '';
+  document.getElementById('otherProblemField').classList.remove('visible');
+  document.getElementById('otherProblemText').value = '';
+
+  window.scrollTo(0, 0);
+}
+</script>
+</body>
+</html>
